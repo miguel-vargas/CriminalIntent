@@ -10,15 +10,14 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentResultListener
 import androidx.lifecycle.ViewModelProvider
-import java.util.Date
 import java.util.UUID
 
 private const val ARG_CRIME_ID = "crime_id"
-private const val DIALOG_DATE = "DialogDate"
-private const val REQUEST_DATE = 0
+private const val REQUEST_DATE = "DialogDate"
 
-class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
+class CrimeFragment : Fragment(), FragmentResultListener {
     private lateinit var crime: Crime
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
@@ -58,6 +57,7 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
                 updateUI()
             }
         }
+        childFragmentManager.setFragmentResultListener(REQUEST_DATE, viewLifecycleOwner, this)
     }
 
     override fun onStart() {
@@ -94,11 +94,9 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         }
 
         dateButton.setOnClickListener {
-            DatePickerFragment.newInstance(crime.date).apply {
-                val fm = this@CrimeFragment.requireActivity().supportFragmentManager
-                setTargetFragment(this@CrimeFragment, REQUEST_DATE)
-                show(fm, DIALOG_DATE)
-            }
+            DatePickerFragment
+                .newInstance(crime.date, REQUEST_DATE)
+                .show(childFragmentManager, REQUEST_DATE)
         }
     }
 
@@ -107,9 +105,13 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         crimeDetailViewModel.saveCrime(crime)
     }
 
-    override fun onDateSelected(date: Date) {
-        crime.date = date
-        updateUI()
+    override fun onFragmentResult(requestKey: String, result: Bundle) {
+        when(requestKey) {
+            REQUEST_DATE -> {
+                crime.date = DatePickerFragment.getSelectedDate(result)!!
+                updateUI()
+            }
+        }
     }
 
     private fun updateUI() {
