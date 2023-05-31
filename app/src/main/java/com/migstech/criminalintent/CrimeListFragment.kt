@@ -10,8 +10,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
@@ -28,7 +27,7 @@ class CrimeListFragment : Fragment() {
     private lateinit var crimeRecyclerView: RecyclerView
     private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
     private val crimeListViewModel : CrimeListViewModel by lazy {
-        ViewModelProviders.of(this)[CrimeListViewModel::class.java]
+        ViewModelProvider(this)[CrimeListViewModel::class.java]
     }
 
     override fun onAttach(context: Context) {
@@ -60,14 +59,13 @@ class CrimeListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         crimeListViewModel.crimeListLiveData.observe(
-            viewLifecycleOwner,
-            Observer { crimes ->
-                crimes?.let {
-                    Log.i(TAG, "Got crimes ${crimes.size}")
-                    updateUI(crimes)
-                }
+            viewLifecycleOwner
+        ) { crimes ->
+            crimes?.let {
+                Log.i(TAG, "Got crimes ${crimes.size}")
+                updateUI(crimes)
             }
-        )
+        }
     }
 
     private fun updateUI(crimes: List<Crime>) {
@@ -78,7 +76,6 @@ class CrimeListFragment : Fragment() {
     private inner class CrimeHolder(view: View) : RecyclerView.ViewHolder(view), View.OnClickListener {
         private lateinit var crime: Crime
 
-//        val dateformatter = SimpleDateFormat("EE, MMM, dd, yyyy", Locale.US)
         val titleTextView: TextView = itemView.findViewById(R.id.crime_title)
         val dateTextView: TextView = itemView.findViewById(R.id.crime_date)
         val solvedImageView: ImageView = itemView.findViewById(R.id.crime_solved)
@@ -118,10 +115,4 @@ class CrimeListFragment : Fragment() {
 
         override fun getItemCount() = crimes.size
     }
-
-//    companion object {
-//        fun newInstance(): CrimeListFragment {
-//            return CrimeListFragment()
-//        }
-//    }
 }
