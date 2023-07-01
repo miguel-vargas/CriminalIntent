@@ -10,26 +10,36 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.FragmentResultListener
+import androidx.lifecycle.ViewModelProvider
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.UUID
 
 private const val ARG_CRIME_ID = "crime_id"
+private const val REQUEST_DATE = "DialogDate"
+private const val REQUEST_TIME = "DialogTime"
+private const val DATE_PATTERN = "E, dd MMM yyyy"
+private const val TIME_PATTERN = "hh:mm a"
 
-class CrimeFragment : Fragment() {
+class CrimeFragment : Fragment(), FragmentResultListener {
     private lateinit var crime: Crime
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
+    private lateinit var timeButton: Button
     private lateinit var solvedCheckBox: CheckBox
+
     private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
-        ViewModelProviders.of(this)[CrimeDetailViewModel::class.java]
+        ViewModelProvider(this)[CrimeDetailViewModel::class.java]
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
-        val crimeId: UUID = arguments?.getSerializable(ARG_CRIME_ID) as UUID
-        crimeDetailViewModel.loadCrime(crimeId)
+        val crimeId = arguments?.getSerializable(ARG_CRIME_ID, UUID::class.java)
+        if (crimeId != null) {
+            crimeDetailViewModel.loadCrime(crimeId)
+        }
     }
 
     override fun onCreateView(
@@ -41,27 +51,23 @@ class CrimeFragment : Fragment() {
 
         titleField = view.findViewById(R.id.crime_title) as EditText
         dateButton = view.findViewById(R.id.crime_date) as Button
+        timeButton = view.findViewById(R.id.crime_time) as Button
         solvedCheckBox = view.findViewById(R.id.crime_solved) as CheckBox
-
-        dateButton.apply {
-            text = crime.date.toString()
-            isEnabled = false
-        }
 
         return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        crimeDetailViewModel.crimeLiveData.observe(
-            viewLifecycleOwner,
-            Observer { crime ->
-                crime?.let {
-                    this.crime = crime
-                    updateUI()
-                }
+        crimeDetailViewModel.crimeLiveData.observe(viewLifecycleOwner) { crime ->
+            crime?.let {
+                this.crime = crime
+                updateUI()
             }
-        )
+        }
+
+        childFragmentManager.setFragmentResultListener(REQUEST_DATE, viewLifecycleOwner, this)
+        childFragmentManager.setFragmentResultListener(REQUEST_TIME, viewLifecycleOwner, this)
     }
 
     override fun onStart() {
@@ -96,6 +102,18 @@ class CrimeFragment : Fragment() {
                 crime.isSolved = isChecked
             }
         }
+
+        dateButton.setOnClickListener {
+            DatePickerFragment
+                .newInstance(crime.date, REQUEST_DATE)
+                .show(childFragmentManager, REQUEST_DATE)
+        }
+
+        timeButton.setOnClickListener {
+            TimePickerFragment
+                .newInstance(crime.date, REQUEST_TIME)
+                .show(childFragmentManager, REQUEST_TIME)
+        }
     }
 
     override fun onStop() {
@@ -103,9 +121,26 @@ class CrimeFragment : Fragment() {
         crimeDetailViewModel.saveCrime(crime)
     }
 
+    override fun onFragmentResult(requestKey: String, result: Bundle) {
+        when(requestKey) {
+            REQUEST_DATE -> {
+                crime.date = DatePickerFragment.getSelectedDate(result)!!
+                updateUI()
+            }
+            REQUEST_TIME -> {
+                crime.date = TimePickerFragment.getSelectedDate(result)!!
+                updateUI()
+            }
+        }
+    }
+
     private fun updateUI() {
+        val dateFormat = SimpleDateFormat(DATE_PATTERN, Locale.US)
+        val timeFormat = SimpleDateFormat(TIME_PATTERN, Locale.US)
+
         titleField.setText(crime.title)
-        dateButton.text = crime.date.toString()
+        dateButton.text = dateFormat.format(crime.date)
+        timeButton.text = timeFormat.format(crime.date)
         solvedCheckBox. apply {
             isChecked = crime.isSolved
             jumpDrawablesToCurrentState()
